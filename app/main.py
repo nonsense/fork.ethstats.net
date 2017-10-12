@@ -71,8 +71,12 @@ class BlockFetcher(object):
     def tidy_heap(self):
         while len(self.block_hash_heap) > self.cache_blocks and self.block_hash_heap[0][0] < self.latest - self.cache_duration:
             blockts, blockhash, blocknum = heapq.heappop(self.block_hash_heap)
-            del block_number_cache[blocknum]
-            del block_hash_cache[blockhash]
+            try:
+                del block_number_cache[blocknum]
+                del block_hash_cache[blockhash]
+            except Exception as e:
+                print("got exception in tidy_heap:")
+                print(e)
 
 
 fetchers = {}
@@ -161,7 +165,14 @@ def build_block_info(clientname):
 
 
 def build_block_infos():
-    infos = [build_block_info(name) for name in get_nodes()]
+    client_names = sorted(get_nodes())
+    infos = []
+    for name in client_names:
+        try:
+            client_report = build_block_info(name)
+            infos.append(client_report)
+        except Exception as e:
+            print("got error trying to get client report:", e)
     max_difficulty = float(max(info['difficulty'] for info in infos))
     max_total_difficulty = max(info['totalDifficulty'] for info in infos)
     for info in infos:
