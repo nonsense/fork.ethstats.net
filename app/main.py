@@ -1,5 +1,5 @@
 import datetime
-from eth_rpc_client import Client
+from web3 import Web3, HTTPProvider
 from flask import Flask, request, make_response, send_file
 import heapq
 import json
@@ -12,7 +12,7 @@ graph_length = 16
 block_interval_average_len = 500
 cache_duration = 3600
 cache_blocks = 1000
-fork_total_difficulty = 39490902020018959982l
+fork_total_difficulty = 39490902020018959982
 app = Flask(__name__)
 
 
@@ -26,7 +26,7 @@ def get_nodes():
 clients = {}
 def get_client(name):
     if len(clients) == 0:
-        clients.update({name: Client(host=node['host'], port=node['port']) for name, node in get_nodes().iteritems()})
+        clients.update({name: Web3(HTTPProvider("http://%s:%d/" % (node['host'], node['port']))) for name, node in get_nodes().items()})
     return clients[name]
 
 
@@ -43,25 +43,25 @@ class BlockFetcher(object):
     def get_block_by_hash(self, h):
         if h not in self.block_hash_cache:
             app.logger.debug("Fetching block not in cache: %s", h)
-            block = self.client.get_block_by_hash(h)
+            block = self.client.eth.getBlock(h)
             self.block_hash_cache[h] = block
             if block is not None:
-                self.block_number_cache[int(block['number'], 16)] = block
-                ts = long(block['timestamp'], 16)
+                self.block_number_cache[block['number']] = block
+                ts = block['timestamp']
                 self.latest = max(self.latest, ts)
 
                 self.tidy_heap()
-                heapq.heappush(self.block_hash_heap, (ts, h, int(block['number'], 16)))
+                heapq.heappush(self.block_hash_heap, (ts, h, block['number']))
         return self.block_hash_cache[h]
 
     def get_block_by_number(self, num):
         if num not in self.block_number_cache:
             app.logger.debug("Fetching block not in cache: %d", num)
-            block = self.client.get_block_by_number(int(num))
+            block = self.client.eth.getBlock(int(num))
             self.block_number_cache[num] = block
             if block is not None:
                 self.block_hash_cache[block['hash']] = block
-                ts = long(block['timestamp'], 16)
+                ts = block['timestamp']
                 self.latest = max(self.latest, ts)
 
                 self.tidy_heap()
@@ -96,7 +96,7 @@ def find_ancestors(roots, earliest):
             block = dict(block)
             blocks[block['hash']] = block
 
-            ts = long(block['timestamp'], 16)
+            ts = block['timestamp']
             if ts >= earliest:
                 if block['parentHash'] not in blocks:
                     frontier.add(block['parentHash'])
@@ -112,14 +112,14 @@ def build_block_graph(roots, earliest):
     nodes = []
     for block in blocks.itervalues():
         nodes.append({
-            'number': long(block['number'], 16),
-            'timestamp': long(block['timestamp'], 16),
+            'number': block['number'],
+            'timestamp': block['timestamp'],
             'hash': block['hash'],
-            'difficulty': long(block['difficulty'], 16),
-            'totalDifficulty': long(block['totalDifficulty'], 16),
-            'size': long(block['size'], 16),
-            'gasUsed': long(block['gasUsed'], 16),
-            'gasLimit': long(block['gasLimit'], 16),
+            'difficulty': block['difficulty'],
+            'totalDifficulty': block['totalDifficulty'],
+            'size': block['size'],
+            'gasUsed': block['gasUsed'],
+            'gasLimit': block['gasLimit'],
             'parents': [block['parentHash']] + block['uncles'],
         })
     nodes.sort(key=lambda node: node['number'])
@@ -130,19 +130,19 @@ lastpolled = {}
 latest_blocks = {}
 def get_latest_block(clientname):
     if clientname not in lastpolled or datetime.datetime.now() - lastpolled[clientname] > datetime.timedelta(seconds=5):
-        latest_blocks[clientname] = get_client(clientname).get_block_by_number('latest', False)
+        latest_blocks[clientname] = get_client(clientname).eth.getBlock('latest')
     return latest_blocks[clientname]
 
 
 def build_block_info(clientname):
     latest = get_latest_block(clientname)
-    latestNumber = long(latest['number'], 16)
-    latestTimestamp = long(latest['timestamp'], 16)
+    latestNumber = latest['number']
+    latestTimestamp = latest['timestamp']
 
-    earlier = get_fetcher(clientname).get_block_by_number(latestNumber - block_interval_average_len)
-    earlierTimestamp = long(earlier['timestamp'], 16)
+    earlier = get_fetcher(clientname).get_block_by_number(max(1, latestNumber - block_interval_average_len)
+    earlierTimestamp = earlier['timestamp']
 
-    difficulty = long(latest['difficulty'], 16)
+    difficulty = latest['difficulty']
     blockInterval = (latestTimestamp - earlierTimestamp) / float(block_interval_average_len)
     hashRate = difficulty / blockInterval
 
@@ -152,13 +152,13 @@ def build_block_info(clientname):
         'hash': latest['hash'],
         'shortHash': latest['hash'][:10],
         'difficulty': difficulty,
-        'totalDifficulty': long(latest['totalDifficulty'], 16) - fork_total_difficulty,
+        'totalDifficulty': latest['totalDifficulty'] - fork_total_difficulty,
         'blockInterval': "%.1f" % (blockInterval,),
         'hashRate': "%.1f" % (hashRate / 1000000000),
         'name': clientname,
         'explore': get_nodes()[clientname]['explorer'] % (latest['hash'],),
     }
-    
+
 
 def build_block_infos():
     infos = [build_block_info(name) for name in get_nodes()]
@@ -176,7 +176,7 @@ def index():
 
 
 @app.route('/blocks')
-def blocks(): 
+def blocks():
     blockinfos = build_block_infos()
     latest = max(block['timestamp'] for block in blockinfos)
     earliest = max(int(request.args.get('since', latest - 300)), latest - cache_duration)
