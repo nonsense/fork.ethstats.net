@@ -143,7 +143,7 @@ def build_block_info(clientname):
     latestNumber = latest['number']
     latestTimestamp = latest['timestamp']
 
-    earlier = get_fetcher(clientname).get_block_by_number(max(1, latestNumber - block_interval_average_len)
+    earlier = get_fetcher(clientname).get_block_by_number(max(1, latestNumber - block_interval_average_len))
     earlierTimestamp = earlier['timestamp']
 
     difficulty = latest['difficulty']
