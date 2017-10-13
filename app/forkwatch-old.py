@@ -1,4 +1,5 @@
 import datetime
+#from eth_rpc_client import Client
 from web3 import Web3, HTTPProvider
 from flask import Flask, request, make_response, send_file
 import heapq
@@ -26,7 +27,7 @@ def get_nodes():
 clients = {}
 def get_client(name):
     if len(clients) == 0:
-        clients.update({name: Web3(HTTPProvider("http://%s:%d/" % (node['host'], node['port']), request_kwargs={'timeout': 3})) for name, node in get_nodes().items()})
+        clients.update({name: Web3(HTTPProvider("http://%s:%d/" % (node['host'], node['port']))) for name, node in get_nodes().items()})
     return clients[name]
 
 
@@ -43,6 +44,7 @@ class BlockFetcher(object):
     def get_block_by_hash(self, h):
         if h not in self.block_hash_cache:
             app.logger.debug("Fetching block not in cache: %s", h)
+            #block = self.client.get_block_by_hash(h)
             block = self.client.eth.getBlock(h)
             self.block_hash_cache[h] = block
             if block is not None:
@@ -57,6 +59,7 @@ class BlockFetcher(object):
     def get_block_by_number(self, num):
         if num not in self.block_number_cache:
             app.logger.debug("Fetching block not in cache: %d", num)
+            #block = self.client.get_block_by_number(int(num))
             block = self.client.eth.getBlock(int(num))
             self.block_number_cache[num] = block
             if block is not None:
@@ -134,6 +137,7 @@ lastpolled = {}
 latest_blocks = {}
 def get_latest_block(clientname):
     if clientname not in lastpolled or datetime.datetime.now() - lastpolled[clientname] > datetime.timedelta(seconds=5):
+        #latest_blocks[clientname] = get_client(clientname).get_block_by_number('latest', False)
         latest_blocks[clientname] = get_client(clientname).eth.getBlock('latest')
     return latest_blocks[clientname]
 
@@ -162,9 +166,10 @@ def build_block_info(clientname):
         'name': clientname,
         'explore': get_nodes()[clientname]['explorer'] % (latest['hash'],),
     }
-
+    
 
 def build_block_infos():
+    #infos = [build_block_info(name) for name in get_nodes()]
     client_names = sorted(get_nodes())
     infos = []
     for name in client_names:
