@@ -1,5 +1,5 @@
 nodes_prod = {
-    'geth-1.7.1': {
+    'geth-1.7.2': {
     	'host': 'localhost',
     	'port': 8645,
     	'explorer': "https://etherscan.io/block/%s",
