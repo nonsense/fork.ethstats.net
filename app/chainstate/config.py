@@ -4,16 +4,16 @@ nodes_prod = {
     	'port': 8645,
     	'explorer': "https://etherscan.io/block/%s",
     },
-    # 'geth-1.6.7': {
-            # 'host': 'localhost',
-            # 'port': 8647,
-            # 'explorer': "https://etherscan.io/block/%s",
-    # },
-    # 'parity-1.7.4': {
-        # 'host': 'localhost',
-        # 'port': 8646,
-        # 'explorer': "https://etherscan.io/block/%s",
-    # },
+    'geth-1.6.7': {
+        'host': 'localhost',
+        'port': 8647,
+        'explorer': "https://etherscan.io/block/%s",
+    },
+    'parity-1.7.4': {
+        'host': 'localhost',
+        'port': 8646,
+        'explorer': "https://etherscan.io/block/%s",
+    },
 }
 
 """
