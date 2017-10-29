@@ -9,11 +9,11 @@ nodes_prod = {
         'port': 8647,
         'explorer': "https://etherscan.io/block/%s",
     },
-    # 'parity-1.7.6': {
-        # 'host': 'localhost',
-        # 'port': 8646,
-        # 'explorer': "https://etherscan.io/block/%s",
-    # },
+    'parity-1.7.8': {
+        'host': 'localhost',
+        'port': 8646,
+        'explorer': "https://etherscan.io/block/%s",
+    },
 }
 
 """
